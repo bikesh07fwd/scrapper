@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  tests/fixtures/remotive_feed.xml
+  ─────────────────────────────────
+  A minimal but representative Remotive RSS fixture for offline tests.
+
+  Contains three entries that cover the following test cases:
+    Entry 1 — All fields present: title, author/company, category, pubDate,
+              description, guid, link
+    Entry 2 — Different category ("DevOps / Sysadmin") to test category extraction
+    Entry 3 — <author> intentionally omitted to test missing-field handling
+              (parser must return company=None, not raise an exception)
+-->
+<rss version="2.0">
+  <channel>
+    <title>Remotive — Remote Jobs</title>
+    <link>https://remotive.com/remote-jobs</link>
+    <description>Remotive handpicks top remote jobs from distributed companies.</description>
+
+    <!-- Entry 1: Full fields -->
+    <item>
+      <title>Senior Python Developer</title>
+      <link>https://remotive.com/remote-jobs/software-dev/senior-python-developer-1001</link>
+      <author>Acme Corp</author>
+      <category>Software Development</category>
+      <pubDate>Mon, 18 Aug 2026 09:00:00 +0000</pubDate>
+      <description><![CDATA[<p>We are looking for an experienced Python developer to join our distributed team. You will build and maintain backend services using Python 3.11+, FastAPI, and PostgreSQL.</p>]]></description>
+      <guid isPermaLink="true">https://remotive.com/remote-jobs/software-dev/senior-python-developer-1001</guid>
+    </item>
+
+    <!-- Entry 2: Different category -->
+    <item>
+      <title>Remote DevOps Engineer</title>
+      <link>https://remotive.com/remote-jobs/devops/remote-devops-engineer-1002</link>
+      <author>Beta Technologies</author>
+      <category>DevOps / Sysadmin</category>
+      <pubDate>Sun, 17 Aug 2026 15:30:00 +0000</pubDate>
+      <description><![CDATA[<p>We are seeking a DevOps engineer with strong experience in Kubernetes, Terraform, and AWS to help us scale our infrastructure.</p>]]></description>
+      <guid isPermaLink="true">https://remotive.com/remote-jobs/devops/remote-devops-engineer-1002</guid>
+    </item>
+
+    <!-- Entry 3: Missing <author> — tests graceful handling of absent optional field -->
+    <item>
+      <title>Full Stack Engineer</title>
+      <link>https://remotive.com/remote-jobs/software-dev/full-stack-engineer-1003</link>
+      <!-- author intentionally omitted -->
+      <category>Software Development</category>
+      <pubDate>Sat, 16 Aug 2026 08:00:00 +0000</pubDate>
+      <description><![CDATA[<p>Join our product team as a Full Stack Engineer. You will work across our React frontend and Node.js backend, with PostgreSQL as the data store.</p>]]></description>
+      <guid isPermaLink="true">https://remotive.com/remote-jobs/software-dev/full-stack-engineer-1003</guid>
+    </item>
+
+  </channel>
+</rss>

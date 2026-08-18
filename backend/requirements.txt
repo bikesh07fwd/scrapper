@@ -1,0 +1,36 @@
+# Web framework — async-native, auto-generates OpenAPI docs, integrates with pydantic
+fastapi==0.115.0
+
+# ASGI server to run FastAPI
+uvicorn[standard]==0.30.6
+
+# Async HTTP client — supports timeouts (connect + read separately), redirects, retry hooks
+httpx==0.27.2
+
+# RSS/Atom feed parser — handles malformed feeds, date parsing, entry normalization
+# The stdlib xml.etree does not handle RSS semantics; feedparser solves a real problem
+feedparser==6.0.11
+
+# Data validation — FastAPI-native; enforces field types at ingestion boundaries
+# Already a transitive dependency of FastAPI; zero extra cost
+pydantic==2.9.2
+
+# Reads settings from environment variables and .env files
+pydantic-settings==2.5.2
+
+# ORM — database-agnostic query layer; asyncio support via [asyncio] extra
+sqlalchemy[asyncio]==2.0.35
+
+# PostgreSQL async driver — required by SQLAlchemy asyncio with PostgreSQL
+asyncpg==0.29.0
+
+# Database schema migrations — makes schema history auditable and reproducible
+alembic==1.13.3
+
+# Background interval scheduler — handles misfire recovery, clean shutdown,
+# per-job metadata. Simpler than a manual asyncio.sleep loop with error handling.
+apscheduler==3.10.4
+
+# Structured JSON logging — makes per-adapter run context (run_id, adapter name)
+# a first-class part of every log record without custom formatters
+structlog==24.4.0

@@ -1,0 +1,15 @@
+# Test-only dependencies — not required to run the application.
+# Install with: pip install -r requirements-dev.txt
+
+# Test runner
+pytest==8.3.3
+
+# Async test support — makes async def test_* functions work without
+# decorating each one with @pytest.mark.asyncio (asyncio_mode = auto in pytest.ini)
+pytest-asyncio==0.24.0
+
+# HTTP mock for httpx — patches httpx at the transport level so tests
+# never hit the real network. The canonical library for this purpose.
+# No alternative within httpx itself handles the full retry-with-backoff
+# test scenario cleanly without a dedicated transport mock layer.
+respx==0.21.1

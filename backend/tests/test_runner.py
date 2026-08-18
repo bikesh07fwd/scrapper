@@ -44,6 +44,15 @@ class AsyncContextManagerMock:
         pass
 
 
+@pytest.fixture(autouse=True)
+def patch_circuit_breaker():
+    from unittest.mock import patch
+    with patch("pipeline.circuit_breaker.can_execute", return_value=(True, "CLOSED")) as mock_can, \
+         patch("pipeline.circuit_breaker.record_circuit_success") as mock_success, \
+         patch("pipeline.circuit_breaker.record_circuit_failure") as mock_fail:
+        yield mock_can, mock_success, mock_fail
+
+
 @pytest.fixture
 def mock_db_session():
     from unittest.mock import MagicMock

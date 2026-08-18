@@ -46,6 +46,50 @@ class RunResult(BaseModel):
     finished_at: datetime
 
 
+async def _safe_record_failure(
+    db_session: AsyncSession,
+    adapter_name: str,
+    exc: Exception,
+    run_id: str,
+    started_at: datetime,
+    fetched_count: int,
+    parsed_count: int,
+    error_count: int,
+    error_messages: list[str],
+) -> None:
+    from config import settings
+    from pipeline.circuit_breaker import record_circuit_failure
+    
+    finished_at = datetime.now(timezone.utc)
+    err_msg = str(exc)
+    
+    run_data_failed = {
+        "run_id": run_id,
+        "adapter": adapter_name,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "status": "failed",
+        "fetched_count": fetched_count,
+        "parsed_count": parsed_count,
+        "new_count": 0,
+        "duplicate_count": 0,
+        "error_count": error_count + 1,
+        "error_messages": error_messages + [f"Fatal pipeline error: {err_msg}"],
+    }
+
+    try:
+        async with db_session.begin():
+            await record_circuit_failure(
+                db_session,
+                adapter_name,
+                err_msg,
+                settings.circuit_failure_threshold,
+            )
+            await persist_run_results(db_session, run_data_failed, [])
+    except Exception as db_exc:
+        logger.error("pipeline.run.failed_to_log_failure_in_db", db_error=str(db_exc))
+
+
 async def run_pipeline(adapter: BaseAdapter, db_session: AsyncSession) -> RunResult:
     """
     Orchestrates the entire ingestion pipeline run for a given adapter.
@@ -67,131 +111,152 @@ async def run_pipeline(adapter: BaseAdapter, db_session: AsyncSession) -> RunRes
 
     log.info("pipeline.run.started", started_at=started_at.isoformat())
 
-    fetched_count = 0
-    parsed_count = 0
-    new_count = 0
-    duplicate_count = 0
-    error_count = 0
-    error_messages: list[str] = []
-    new_records: list[dict] = []
+    # 0. Check circuit breaker state
+    from config import settings
+    from pipeline.circuit_breaker import can_execute, record_circuit_success
 
-    try:
-        # 1. Fetch raw content
-        try:
-            raw = await adapter.fetch()
-        except Exception as exc:
-            log.error("pipeline.run.fetch_failed", error=str(exc))
-            raise exc
+    proceed, current_state = await can_execute(
+        db_session, adapter.name, settings.circuit_open_wait_seconds
+    )
 
-        # 2. Parse raw content
-        try:
-            raw_records = adapter.parse(raw)
-            parsed_count = len(raw_records)
-            fetched_count = parsed_count
-        except Exception as exc:
-            log.error("pipeline.run.parse_failed", error=str(exc))
-            raise exc
-
-        # 3. Validate raw records
-        valid_raw_records, validation_errors = validate_records(raw_records)
-        if validation_errors:
-            error_count += len(validation_errors)
-            error_messages.extend(validation_errors)
-            log.warning("pipeline.run.validation_warnings", count=len(validation_errors))
-
-        # 4. Normalize valid records
-        normalized_records = []
-        for raw_rec in valid_raw_records:
-            try:
-                normalized = normalize_record(raw_rec)
-                normalized_records.append(normalized)
-            except Exception as exc:
-                error_count += 1
-                title_snip = raw_rec.title or raw_rec.url or "Unknown"
-                msg = f"Normalization error for {title_snip}: {exc}"
-                error_messages.append(msg)
-                log.warning("pipeline.run.normalization_warning", error=str(exc))
-
-        # 5. Deduplicate and Persist inside a single transaction
+    if not proceed:
+        finished_at = datetime.now(timezone.utc)
+        error_messages = ["Ingestion skipped: Circuit breaker is OPEN."]
+        run_data_skipped = {
+            "run_id": run_id,
+            "adapter": adapter.name,
+            "started_at": started_at,
+            "finished_at": finished_at,
+            "status": "skipped",
+            "fetched_count": 0,
+            "parsed_count": 0,
+            "new_count": 0,
+            "duplicate_count": 0,
+            "error_count": 1,
+            "error_messages": error_messages,
+        }
+        # Persist skipped IngestionRun details in a transaction
         async with db_session.begin():
-            new_records, duplicate_count = await deduplicate_records(db_session, normalized_records)
-            new_count = len(new_records)
+            await persist_run_results(db_session, run_data_skipped, [])
 
-            # 6. Determine final status
-            # SUCCESS: completed, zero validation/normalization errors
-            # PARTIAL: completed, but some records failed validation/normalization
-            status = "partial" if error_count > 0 else "success"
-
-            finished_at = datetime.now(timezone.utc)
-
-            run_data = {
-                "run_id": run_id,
-                "adapter": adapter.name,
-                "started_at": started_at,
-                "finished_at": finished_at,
-                "status": status,
-                "fetched_count": fetched_count,
-                "parsed_count": parsed_count,
-                "new_count": new_count,
-                "duplicate_count": duplicate_count,
-                "error_count": error_count,
-                "error_messages": error_messages,
-            }
-
-            # 7. Persist results
-            await persist_run_results(db_session, run_data, new_records)
-
-        log.info(
-            "pipeline.run.completed",
-            status=status,
-            new=new_count,
-            duplicates=duplicate_count,
-            errors=error_count,
-            duration_seconds=(finished_at - started_at).total_seconds(),
-        )
-
+        log.info("pipeline.run.skipped", reason="circuit_open")
         return RunResult(
             run_id=run_id,
             adapter=adapter.name,
-            status=status,
-            fetched_count=fetched_count,
-            parsed_count=parsed_count,
-            new_count=new_count,
-            duplicate_count=duplicate_count,
-            error_count=error_count,
+            status="skipped",
+            fetched_count=0,
+            parsed_count=0,
+            new_count=0,
+            duplicate_count=0,
+            error_count=1,
             error_messages=error_messages,
             started_at=started_at,
             finished_at=finished_at,
         )
 
-    except Exception as fatal_exc:
-        # Record run as failed if possible
-        finished_at = datetime.now(timezone.utc)
-        error_messages.append(f"Fatal pipeline error: {fatal_exc}")
-        error_count += 1
+    fetched_count = 0
+    parsed_count = 0
+    new_count = 0
+    duplicate_count = 0
+    error_count = 0
+    error_messages = []
+    new_records = []
 
-        run_data_failed = {
+    # 1. Fetch raw content
+    try:
+        raw = await adapter.fetch()
+    except Exception as exc:
+        log.error("pipeline.run.fetch_failed", error=str(exc))
+        await _safe_record_failure(
+            db_session, adapter.name, exc, run_id, started_at,
+            fetched_count, parsed_count, error_count, error_messages
+        )
+        raise exc
+
+    # 2. Parse raw content
+    try:
+        raw_records = adapter.parse(raw)
+        parsed_count = len(raw_records)
+        fetched_count = parsed_count
+    except Exception as exc:
+        log.error("pipeline.run.parse_failed", error=str(exc))
+        await _safe_record_failure(
+            db_session, adapter.name, exc, run_id, started_at,
+            fetched_count, parsed_count, error_count, error_messages
+        )
+        raise exc
+
+    # 3. Validate raw records
+    valid_raw_records, validation_errors = validate_records(raw_records)
+    if validation_errors:
+        error_count += len(validation_errors)
+        error_messages.extend(validation_errors)
+        log.warning("pipeline.run.validation_warnings", count=len(validation_errors))
+
+    # 4. Normalize valid records
+    normalized_records = []
+    for raw_rec in valid_raw_records:
+        try:
+            normalized = normalize_record(raw_rec)
+            normalized_records.append(normalized)
+        except Exception as exc:
+            error_count += 1
+            title_snip = raw_rec.title or raw_rec.url or "Unknown"
+            msg = f"Normalization error for {title_snip}: {exc}"
+            error_messages.append(msg)
+            log.warning("pipeline.run.normalization_warning", error=str(exc))
+
+    # 5. Deduplicate and Persist inside a single transaction
+    async with db_session.begin():
+        # Record success on circuit breaker (since fetch/parse succeeded)
+        await record_circuit_success(db_session, adapter.name)
+
+        new_records, duplicate_count = await deduplicate_records(db_session, normalized_records)
+        new_count = len(new_records)
+
+        # 6. Determine final status
+        # SUCCESS: completed, zero validation/normalization errors
+        # PARTIAL: completed, but some records failed validation/normalization
+        status = "partial" if error_count > 0 else "success"
+
+        finished_at = datetime.now(timezone.utc)
+
+        run_data = {
             "run_id": run_id,
             "adapter": adapter.name,
             "started_at": started_at,
             "finished_at": finished_at,
-            "status": "failed",
+            "status": status,
             "fetched_count": fetched_count,
             "parsed_count": parsed_count,
-            "new_count": 0,
-            "duplicate_count": 0,
+            "new_count": new_count,
+            "duplicate_count": duplicate_count,
             "error_count": error_count,
             "error_messages": error_messages,
         }
 
-        try:
-            # We use a separate transaction to save the failed IngestionRun details
-            # if the database is available. If the database itself is dead, this will raise.
-            async with db_session.begin():
-                await persist_run_results(db_session, run_data_failed, [])
-            log.info("pipeline.run.logged_failure", status="failed")
-        except Exception as db_exc:
-            log.error("pipeline.run.failed_to_log_failure_in_db", db_error=str(db_exc))
+        # 7. Persist results
+        await persist_run_results(db_session, run_data, new_records)
 
-        # Propagate original exception so caller/runner knows it failed fatally
-        raise fatal_exc
+    log.info(
+        "pipeline.run.completed",
+        status=status,
+        new=new_count,
+        duplicates=duplicate_count,
+        errors=error_count,
+        duration_seconds=(finished_at - started_at).total_seconds(),
+    )
+
+    return RunResult(
+        run_id=run_id,
+        adapter=adapter.name,
+        status=status,
+        fetched_count=fetched_count,
+        parsed_count=parsed_count,
+        new_count=new_count,
+        duplicate_count=duplicate_count,
+        error_count=error_count,
+        error_messages=error_messages,
+        started_at=started_at,
+        finished_at=finished_at,
+    )

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Remotive Duplicates</title>
+    <item>
+      <title>Senior Python Engineer</title>
+      <link>https://remotive.com/jobs/senior-python-engineer-101</link>
+      <description>Python job</description>
+      <pubDate>Wed, 19 Aug 2026 09:00:00 GMT</pubDate>
+      <category>Software Development</category>
+      <author>Acdyon Corp</author>
+    </item>
+    <item>
+      <title>Senior Python Engineer</title>
+      <link>https://remotive.com/jobs/senior-python-engineer-101</link>
+      <description>Duplicate of first job in same batch</description>
+      <pubDate>Wed, 19 Aug 2026 09:00:00 GMT</pubDate>
+      <category>Software Development</category>
+      <author>Acdyon Corp</author>
+    </item>
+  </channel>
+</rss>

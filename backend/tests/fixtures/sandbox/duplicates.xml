@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Sandbox Jobs — Duplicates</title>
+    <item>
+      <title>Sandbox Developer 1</title>
+      <link>http://sandbox.example.com/jobs/1</link>
+      <description>Sandbox test job</description>
+    </item>
+    <item>
+      <title>Sandbox Developer 1</title>
+      <link>http://sandbox.example.com/jobs/1</link>
+      <description>Duplicate entry</description>
+    </item>
+  </channel>
+</rss>

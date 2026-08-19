@@ -13,3 +13,6 @@ pytest-asyncio==0.24.0
 # No alternative within httpx itself handles the full retry-with-backoff
 # test scenario cleanly without a dedicated transport mock layer.
 respx==0.21.1
+
+# Coverage metrics
+pytest-cov==5.0.0

@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "external_id": "sha256-hash-value-123",
+  "source": "remotive",
+  "title": "Software Engineer",
+  "company": "Acdyon",
+  "location": "Remote",
+  "category": "Software Development",
+  "tags": ["python", "remote"],
+  "url": "http://example.com/job/1",
+  "description_snippet": "Python job description snippet...",
+  "published_at": "2026-08-19T09:00:00Z"
+}

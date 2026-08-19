@@ -1,0 +1,13 @@
+{
+  "run_id": "run-uuid-12345",
+  "adapter": "remotive",
+  "started_at": "2026-08-19T09:00:00Z",
+  "finished_at": "2026-08-19T09:00:05Z",
+  "status": "success",
+  "fetched_count": 3,
+  "parsed_count": 3,
+  "new_count": 2,
+  "duplicate_count": 1,
+  "error_count": 0,
+  "error_messages": []
+}

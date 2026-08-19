@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Remotive Jobs</title>
+    <link>https://remotive.com/</link>
+    <description>Remote Jobs</description>
+    <item>
+      <title>Senior Python Engineer</title>
+      <link>https://remotive.com/jobs/senior-python-engineer-101</link>
+      <description>&lt;p&gt;We are looking for a Senior Python Engineer...&lt;/p&gt;</description>
+      <pubDate>Wed, 19 Aug 2026 09:00:00 GMT</pubDate>
+      <category>Software Development</category>
+      <author>Acdyon Corp</author>
+    </item>
+    <item>
+      <title>React Developer</title>
+      <link>https://remotive.com/jobs/react-developer-102</link>
+      <description>&lt;p&gt;Looking for React UI developer...&lt;/p&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 12:00:00 GMT</pubDate>
+      <category>Front-End</category>
+      <author>Vercel Ltd</author>
+    </item>
+    <item>
+      <title>DevOps Engineer</title>
+      <link>https://remotive.com/jobs/devops-engineer-103</link>
+      <description>&lt;p&gt;Kubernetes and AWS expertise.&lt;/p&gt;</description>
+      <pubDate>Mon, 17 Aug 2026 08:30:00 GMT</pubDate>
+      <category>DevOps</category>
+      <author>SaaS Inc</author>
+    </item>
+  </channel>
+</rss>

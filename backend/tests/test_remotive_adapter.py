@@ -214,15 +214,8 @@ class TestParseEdgeCases:
 
     def test_empty_feed_returns_empty_list(self, adapter):
         """An RSS channel with no <item> elements returns []."""
-        empty_rss = b"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>Empty Feed</title>
-    <link>https://remotive.com</link>
-    <description>No jobs today.</description>
-  </channel>
-</rss>"""
-        records = adapter.parse(empty_rss)
+        content = Path(__file__).parent / "fixtures" / "remotive" / "empty_feed.xml"
+        records = adapter.parse(content.read_bytes())
         assert records == []
 
     def test_completely_empty_bytes_returns_list(self, adapter):
@@ -232,32 +225,25 @@ class TestParseEdgeCases:
 
     def test_malformed_xml_does_not_raise(self, adapter):
         """feedparser is tolerant of bad XML — must not raise."""
-        malformed = b"this is not valid XML <><><> !!!"
-        records = adapter.parse(malformed)
+        content = Path(__file__).parent / "fixtures" / "remotive" / "malformed_feed.xml"
+        records = adapter.parse(content.read_bytes())
         assert isinstance(records, list)
 
     def test_feed_with_missing_optional_fields_does_not_raise(self, adapter):
-        """An item with only a title must parse without error."""
-        minimal_rss = b"""<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0">
-  <channel>
-    <title>Minimal Feed</title>
-    <link>https://remotive.com</link>
-    <item>
-      <title>A Job With No Other Fields</title>
-    </item>
-  </channel>
-</rss>"""
-        records = adapter.parse(minimal_rss)
-        assert len(records) == 1
-        assert records[0]["title"] == "A Job With No Other Fields"
-        assert records[0]["company"] is None
-        assert records[0]["url"] is None
-        assert records[0]["tags"] == []
-        assert records[0]["category"] is None
+        """An item with missing optional fields must parse without error."""
+        content = Path(__file__).parent / "fixtures" / "remotive" / "partial_feed.xml"
+        records = adapter.parse(content.read_bytes())
+        assert len(records) == 2
+        assert records[0]["title"] == "Senior Python Engineer"
+        assert records[1]["title"] == "React Developer"
+        assert records[1]["company"] is None
+        assert records[1]["url"] == "https://remotive.com/jobs/react-developer-102"
+        assert records[1]["tags"] == []
+        assert records[1]["category"] is None
 
     def test_parse_accepts_string_input(self, adapter, fixture_bytes):
         """parse() must accept str as well as bytes."""
         as_string = fixture_bytes.decode("utf-8")
         records = adapter.parse(as_string)
         assert len(records) == 3
+

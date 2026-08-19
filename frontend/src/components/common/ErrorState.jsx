@@ -8,7 +8,7 @@ import Button from "./Button";
 
 export default function ErrorState({
   title = "API Connection Failure",
-  description = "The FastAPI backend server could not be reached. Please check that it is running on http://127.0.0.1:8000.",
+  description = "The FastAPI backend server could not be reached. Please ensure it is running and accessible.",
   onRetry,
 }) {
   return (

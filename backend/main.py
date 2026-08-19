@@ -1,5 +1,20 @@
 from fastapi import FastAPI, HTTPException, Query, Response
 import asyncio
+from contextlib import asynccontextmanager
+
+from config import settings
+from routers import health, jobs, runs, trigger
+from scheduler import start_scheduler, shutdown_scheduler
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler = None
+    if settings.scheduler_enabled:
+        scheduler = start_scheduler()
+    yield
+    if scheduler:
+        shutdown_scheduler(scheduler)
+
 
 app = FastAPI(
     title="Job Ingestion Pipeline",
@@ -8,7 +23,14 @@ app = FastAPI(
         "from public sources with resilience, retry, and circuit breaking."
     ),
     version="1.0.0",
+    lifespan=lifespan,
 )
+
+
+app.include_router(health.router)
+app.include_router(jobs.router)
+app.include_router(runs.router)
+app.include_router(trigger.router)
 
 
 @app.get("/", tags=["status"])
